@@ -3841,6 +3841,9 @@ var _ = Describe("JPD Commands", func() {
 
 						err = os.WriteFile("deno.json", []byte(pkgJsonContent), os.ModePerm)
 						assert.NoError(err)
+						DeferCleanup(func() {
+							_ = os.Remove("deno.json")
+						})
 
 						// Override the root command to inject our custom mock UI
 						// Set debug expectations for lockfile-based detection of deno
