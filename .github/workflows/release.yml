@@ -60,7 +60,7 @@ jobs:
           GORELEASER_WINGET_DEPLOY_KEY_B64: ${{ secrets.GORELEASER_WINGET_DEPLOY_KEY_B64 }}
           GORELEASER_HOMEBREW_DEPLOY_KEY_B64: ${{ secrets.GORELEASER_HOMEBREW_DEPLOY_KEY_B64 }}
           GORELEASER_NIX_DEPLOY_KEY_B64: ${{ secrets.GORELEASER_NIX_DEPLOY_KEY_B64 }}
-          SCOOP_PRIVATE_KEY: ${{ secrets.SCOOP_PRIVATE_KEY }}
+          SCOOP_PRIVATE_KEY_B64: ${{ secrets.SCOOP_PRIVATE_KEY_B64 }}
         run: |
           write_base64_key() {
             key_path="$1"
@@ -68,15 +68,6 @@ jobs:
 
             umask 077
             printf '%s' "$key_value" | tr -d '\r\n' | base64 --decode > "$key_path"
-            chmod 600 "$key_path"
-          }
-
-          write_raw_key() {
-            key_path="$1"
-            key_value="$2"
-
-            umask 077
-            printf '%s\n' "$key_value" | tr -d '\r' > "$key_path"
             chmod 600 "$key_path"
           }
 
@@ -88,7 +79,7 @@ jobs:
           write_base64_key "$winget_key_path" "$GORELEASER_WINGET_DEPLOY_KEY_B64"
           write_base64_key "$homebrew_key_path" "$GORELEASER_HOMEBREW_DEPLOY_KEY_B64"
           write_base64_key "$nix_key_path" "$GORELEASER_NIX_DEPLOY_KEY_B64"
-          write_raw_key "$scoop_key_path" "$SCOOP_PRIVATE_KEY"
+          write_base64_key "$scoop_key_path" "$SCOOP_PRIVATE_KEY_B64"
 
           {
             echo "GORELEASER_WINGET_DEPLOY_KEY_PATH=$winget_key_path"
