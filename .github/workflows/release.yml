@@ -1,88 +1,107 @@
-# .github/workflows/release.yml
 name: Release
 
 on:
   push:
     tags:
-      - 'v*.*.*'
+      - "v*.*.*"
   workflow_dispatch:
 
 permissions:
   contents: write
   packages: write
 
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
+
 jobs:
   release:
     runs-on: ubuntu-latest
-
     steps:
-    - name: Checkout
-      uses: actions/checkout@v4
-      with:
-        fetch-depth: 0
+      - name: Checkout
+        uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
 
-    - name: Set up Go
-      uses: actions/setup-go@v5
-      with:
-        go-version-file: 'go.mod'
-        cache: true
+      - name: Set up Go
+        uses: actions/setup-go@v6
+        with:
+          go-version-file: go.mod
+          cache: true
 
-    # IMPORTANT: Nix MUST be installed before GoReleaser
-    # 
-    # GoReleaser requires Nix to be fully initialized and available in the PATH
-    # for the Nix post-hook to work correctly. The post-hook uses nix-prefetch-url
-    # to calculate SHA256 hashes for the Nix formula generation.
-    # 
-    # Installation order:
-    # 1. Install Nix first
-    # 2. Verify Nix paths are exported to GITHUB_ENV
-    # 3. Run GoReleaser with Nix available in its environment
-    #
-    # If this order is not maintained, GoReleaser's Nix post-hook will fail
-    # with "nix-prefetch-url: command not found" errors.
-    - name: Install Nix
-      uses: cachix/install-nix-action@v27
-      with:
-        github_access_token: ${{ secrets.GITHUB_TOKEN }}
-        install_url: https://releases.nixos.org/nix/nix-2.18.1/install
-        extra_nix_config: |
-          experimental-features = nix-command flakes
+      - name: Install Nix
+        uses: cachix/install-nix-action@v27
+        with:
+          github_access_token: ${{ secrets.GITHUB_TOKEN }}
+          install_url: https://releases.nixos.org/nix/nix-2.18.1/install
+          extra_nix_config: |
+            experimental-features = nix-command flakes
 
-    - name: Verify Nix installation
-      run: |
-        echo "Nix version:"
-        nix --version
-        echo "Nix PATH:"
-        echo $PATH
-        echo "NIX_PATH:"
-        echo $NIX_PATH
-        # Export Nix paths for subsequent steps
-        echo "PATH=$PATH" >> $GITHUB_ENV
-        echo "NIX_PATH=$NIX_PATH" >> $GITHUB_ENV
-        if [ -n "$NIX_PROFILES" ]; then
-          echo "NIX_PROFILES=$NIX_PROFILES" >> $GITHUB_ENV
-        fi
-        if [ -n "$NIX_SSL_CERT_FILE" ]; then
-          echo "NIX_SSL_CERT_FILE=$NIX_SSL_CERT_FILE" >> $GITHUB_ENV
-        fi
+      - name: Verify Nix installation
+        run: |
+          nix --version
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          echo "NIX_PATH=$NIX_PATH" >> "$GITHUB_ENV"
+          if [ -n "${NIX_PROFILES:-}" ]; then
+            echo "NIX_PROFILES=$NIX_PROFILES" >> "$GITHUB_ENV"
+          fi
+          if [ -n "${NIX_SSL_CERT_FILE:-}" ]; then
+            echo "NIX_SSL_CERT_FILE=$NIX_SSL_CERT_FILE" >> "$GITHUB_ENV"
+          fi
 
-    - name: Test Nix in shell
-      run: |
-        # Test that Nix commands are available
-        which nix
-        nix --version
-        # Test nix-prefetch-url which GoReleaser might use
-        which nix-prefetch-url || echo "nix-prefetch-url not found"
-        # Ensure nix tools are in PATH
-        export PATH="$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
-        echo "PATH=$PATH" >> $GITHUB_ENV
+      - name: Ensure nix-prefetch-url is available
+        run: |
+          export PATH="$HOME/.nix-profile/bin:/nix/var/nix/profiles/default/bin:$PATH"
+          echo "PATH=$PATH" >> "$GITHUB_ENV"
+          which nix
+          which nix-prefetch-url || true
 
-    - name: Run GoReleaser
-      uses: goreleaser/goreleaser-action@v6
-      with:
-        distribution: goreleaser
-        version: latest
-        args: release --clean
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        GORELEASER_DEPLOY_KEY: ${{ secrets.GORELEASER_DEPLOY_KEY }}
+      - name: Write GoReleaser deploy keys
+        env:
+          GORELEASER_WINGET_DEPLOY_KEY_B64: ${{ secrets.GORELEASER_WINGET_DEPLOY_KEY_B64 }}
+          GORELEASER_HOMEBREW_DEPLOY_KEY_B64: ${{ secrets.GORELEASER_HOMEBREW_DEPLOY_KEY_B64 }}
+          GORELEASER_NIX_DEPLOY_KEY_B64: ${{ secrets.GORELEASER_NIX_DEPLOY_KEY_B64 }}
+          SCOOP_PRIVATE_KEY: ${{ secrets.SCOOP_PRIVATE_KEY }}
+        run: |
+          write_base64_key() {
+            key_path="$1"
+            key_value="$2"
+
+            umask 077
+            printf '%s' "$key_value" | tr -d '\r\n' | base64 --decode > "$key_path"
+            chmod 600 "$key_path"
+          }
+
+          write_raw_key() {
+            key_path="$1"
+            key_value="$2"
+
+            umask 077
+            printf '%s\n' "$key_value" | tr -d '\r' > "$key_path"
+            chmod 600 "$key_path"
+          }
+
+          winget_key_path="$RUNNER_TEMP/goreleaser-winget"
+          homebrew_key_path="$RUNNER_TEMP/goreleaser-homebrew"
+          nix_key_path="$RUNNER_TEMP/goreleaser-nix"
+          scoop_key_path="$RUNNER_TEMP/goreleaser-scoop"
+
+          write_base64_key "$winget_key_path" "$GORELEASER_WINGET_DEPLOY_KEY_B64"
+          write_base64_key "$homebrew_key_path" "$GORELEASER_HOMEBREW_DEPLOY_KEY_B64"
+          write_base64_key "$nix_key_path" "$GORELEASER_NIX_DEPLOY_KEY_B64"
+          write_raw_key "$scoop_key_path" "$SCOOP_PRIVATE_KEY"
+
+          {
+            echo "GORELEASER_WINGET_DEPLOY_KEY_PATH=$winget_key_path"
+            echo "GORELEASER_HOMEBREW_DEPLOY_KEY_PATH=$homebrew_key_path"
+            echo "GORELEASER_NIX_DEPLOY_KEY_PATH=$nix_key_path"
+            echo "SCOOP_PRIVATE_KEY_PATH=$scoop_key_path"
+          } >> "$GITHUB_ENV"
+
+      - name: Run GoReleaser
+        uses: goreleaser/goreleaser-action@v6
+        with:
+          distribution: goreleaser
+          version: "~> v2"
+          args: release --clean --config goreleaser.yaml
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
