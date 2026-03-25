@@ -63,18 +63,18 @@ changelog:
 
 release:
   github:
-    owner: Sheltons-CLI-Projects
+    owner: louiss0
     name: javascript-package-delegator
 
 winget:
   - name: javascript-package-delegator
     publisher: the-code-fixer-23
     short_description: "A CLI for executing JavaScript package manager commands based on lock files. Supports npm, yarn, pnpm, bun, and deno."
-    homepage: "https://github.com/Sheltons-CLI-Projects/javascript-package-delegator"
+    homepage: "https://github.com/louiss0/javascript-package-delegator"
     path: "manifests/t/the-code-fixer-23/javascript-package-delegator/{{ .Version }}"
     license: MIT
-    publisher_url: https://github.com/Sheltons-CLI-Projects
-    publisher_support_url: "https://github.com/Sheltons-CLI-Projects/javascript-package-delegator/issues/new"
+    publisher_url: https://github.com/louiss0
+    publisher_support_url: "https://github.com/louiss0/javascript-package-delegator/issues/new"
     package_identifier: the-code-fixer-23.javascript-package-delegator
     commit_author:
       name: louis0
@@ -104,7 +104,7 @@ homebrew_casks:
       name: louiss0
       email: louishelton0@gmail.com
     commit_msg_template: "Brew cask update for {{ .ProjectName }} version {{ .Tag }}"
-    homepage: "https://github.com/Sheltons-CLI-Projects/javascript-package-delegator"
+    homepage: "https://github.com/louiss0/javascript-package-delegator"
     description: "A CLI for executing JavaScript package manager commands based on lock files. Supports npm, yarn, pnpm, bun, and deno."
     repository:
       owner: Sheltons-CLI-Projects
@@ -121,7 +121,7 @@ scoops:
       email: louishelton0@gmail.com
     commit_msg_template: "Scoop update for {{ .ProjectName }} version {{ .Tag }}"
     goamd64: v3
-    homepage: "https://github.com/Sheltons-CLI-Projects/javascript-package-delegator"
+    homepage: "https://github.com/louiss0/javascript-package-delegator"
     directory: bucket
     license: MIT
     description: "A CLI for executing JavaScript package manager commands based on lock files. Supports npm, yarn, pnpm, bun, and deno."
@@ -141,7 +141,7 @@ nix:
       email: louishelton0@gmail.com
     commit_msg_template: "{{ .ProjectName }}: {{ .Tag }}"
     path: "pkgs/{{ .ProjectName }}/default.nix"
-    homepage: "https://github.com/Sheltons-CLI-Projects/javascript-package-delegator"
+    homepage: "https://github.com/louiss0/javascript-package-delegator"
     description: "A CLI for executing JavaScript package manager commands based on lock files. Supports npm, yarn, pnpm, bun, and deno."
     license: "mit"
     repository:
