@@ -41,9 +41,10 @@ import (
 	"github.com/louiss0/javascript-package-delegator/services"
 )
 
-// BuildCreateCommand builds command line for running package create commands
+// BuildCreateCommand builds command lines using each package manager's native create command.
 func BuildCreateCommand(pm, yarnVersion, name string, args []string) (program string, argv []string, err error) {
-	// Special handling for deno - requires URL as name
+	_ = yarnVersion
+
 	if pm == "deno" {
 		if name == "" {
 			return "", nil, fmt.Errorf("deno create requires a URL as the first argument")
@@ -54,7 +55,6 @@ func BuildCreateCommand(pm, yarnVersion, name string, args []string) (program st
 		return "deno", append([]string{"run", name}, args...), nil
 	}
 
-	// For all other package managers, require name and reject URLs
 	if name == "" {
 		return "", nil, fmt.Errorf("package name is required for create command")
 	}
@@ -62,47 +62,13 @@ func BuildCreateCommand(pm, yarnVersion, name string, args []string) (program st
 		return "", nil, fmt.Errorf("URLs are not supported for %s, use deno instead", pm)
 	}
 
-	// Determine the actual binary to execute (create-<name> for unscoped, leave scoped and already-prefixed names as-is)
-	bin := name
-	// identify scoped package like @scope/name (optionally with @version)
-	isScoped := strings.HasPrefix(name, "@") && strings.Contains(name, "/")
-	// strip version/dist tag to check base name prefixing rules
-	base := name
-	if at := strings.Index(base, "@"); at > 0 { // ignore leading '@' for scoped names
-		base = base[:at]
-	}
-	if !isScoped {
-		// only prefix for unscoped names when they don't already start with create-
-		if !strings.HasPrefix(base, "create-") {
-			bin = "create-" + name
-		}
-	}
-
-	// Build command based on package manager
 	switch pm {
 	case "npm":
-		// npm exec create-<name> -- <args>
-		argv = append([]string{"exec", bin, "--"}, args...)
+		argv = append([]string{"create", name, "--"}, args...)
 		return "npm", argv, nil
-	case "pnpm":
-		// Prefer pnpm dlx for create runners: pnpm dlx <bin> <args>
-		argv = append([]string{"dlx", bin}, args...)
-		return "pnpm", argv, nil
-	case "yarn":
-		yarnMajor := ParseYarnMajor(yarnVersion)
-		if yarnMajor <= 1 {
-			// Yarn v1 -> use npx: npx <bin> <args>
-			argv = append([]string{bin}, args...)
-			return "npx", argv, nil
-		} else {
-			// Yarn v2+ -> use dlx: yarn dlx <bin> <args>
-			argv = append([]string{"dlx", bin}, args...)
-			return "yarn", argv, nil
-		}
-	case "bun":
-		// bunx <bin> <args>
-		argv = append([]string{bin}, args...)
-		return "bunx", argv, nil
+	case "pnpm", "yarn", "bun":
+		argv = append([]string{"create", name}, args...)
+		return pm, argv, nil
 	default:
 		return "", nil, fmt.Errorf("unsupported package manager: %s", pm)
 	}
@@ -170,11 +136,10 @@ func NewCreateCmd(searcher CreateAppSearcher, newCreateAppSelector func([]servic
 This command delegates to the package manager's create functionality to bootstrap new projects.
 
 Package Manager Behavior:
-- npm: Runs 'npm exec create-<name> -- <args>'
-- pnpm: Runs 'pnpm exec create-<name> <args>'
-- yarn v1: Runs 'npx create-<name> <args>'
-- yarn v2+: Runs 'yarn dlx create-<name> <args>'
-- bun: Runs 'bunx create-<name> <args>'
+- npm: Runs 'npm create <name> -- <args>'
+- pnpm: Runs 'pnpm create <name> <args>'
+- yarn: Runs 'yarn create <name> <args>'
+- bun: Runs 'bun create <name> <args>'
 - deno: Runs 'deno run <url> <args>' (expects URL as first argument)
 
 JPD flags (for this command):
@@ -184,8 +149,7 @@ JPD flags (for this command):
 Passing flags to scaffolding tools:
 - npm: JPD automatically inserts the -- separator before the app name so flags go to the scaffolder.
        Do not add another -- yourself; if you do, JPD will normalize it.
-- pnpm / yarn v2+ / bun: pass flags directly after your app name.
-- yarn v1: uses npx under the hood; pass flags directly after your app name.
+- pnpm / yarn / bun: pass flags directly after your app name.
 - deno: pass arguments directly after the URL.
 
 Examples:
@@ -365,7 +329,7 @@ Examples:
 				createAppQuery = strings.Split(chosen, " ")[0]
 			}
 
-			// Get yarn version if needed
+			// Keep yarnVersion in the call signature for compatibility.
 			yarnVersion := ""
 			if pm == "yarn" {
 				if version, err := detect.DetectYarnVersion(
