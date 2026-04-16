@@ -251,11 +251,10 @@ var _ = Describe("JPD Commands", func() {
 			assert.Contains(output, "jpd")
 		})
 
-		It("should show help", func() {
-			output, err := executeCmd(rootCmd, "--help")
+		It("should show version with the shorthand flag", func() {
+			output, err := executeCmd(rootCmd, "-v")
 			assert.NoError(err)
-			assert.Contains(output, "JavaScript Package Delegator")
-			assert.Contains(output, "jpd")
+			assert.Contains(output, build_info.CLI_VERSION.String())
 		})
 
 		Context("How it responds when no lockfile or global PM is detected", func() {

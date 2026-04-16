@@ -166,8 +166,8 @@ type Dependencies struct {
 	NewPackageMultiSelectUI               func([]services.PackageInfo) MultiUISelecter
 	NewTaskSelectorUI                     func(options []string) TaskUISelector
 	NewDependencyMultiSelectUI            func(options []string) DependencyUIMultiSelector
-	NewCreateAppSelector                  func([]services.PackageInfo) CreateAppSelector
 	NewCreateAppSearcher                  func() CreateAppSearcher
+	NewCreateAppSelector                  func([]services.PackageInfo) CreateAppSelector
 	NewDebugExecutor                      func(bool) DebugExecutor
 }
 
@@ -296,14 +296,36 @@ Available commands:
 		run        - Run package.json scripts (equivalent to 'nr')
 		exec       - Execute packages (equivalent to 'nlx')
 		dlx        - Execute packages with package runner (dedicated package-runner command)
-		create     - Scaffold new projects (equivalent to 'npm|pnpm|yarn|bun create', 'deno run <url>')
+		create     - Scaffold new projects by delegating to 'npm|pnpm|yarn|bun create' or 'deno run <url>'
+		start      - Run dev/start scripts with dependency preflight
 		update     - Update packages (equivalent to 'nup')
 		uninstall  - Uninstall packages (equivalent to 'nun')
 		clean-install - Clean install with frozen lockfile (equivalent to 'nci')
 		agent      - Show detected package manager (equivalent to 'na')`,
 		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
+			versionFlag, err := cmd.Flags().GetBool("version")
+			if err != nil {
+				return err
+			}
+			if versionFlag {
+				_, err = fmt.Fprintln(cmd.OutOrStdout(), build_info.CLI_VERSION.String())
+				return err
+			}
+			return cmd.Help()
+		},
 
 		PersistentPreRunE: func(c *cobra.Command, args []string) error {
+			if c.Parent() == nil {
+				versionFlag, err := c.Flags().GetBool("version")
+				if err != nil {
+					return err
+				}
+				if versionFlag {
+					return nil
+				}
+			}
+
 			// Load .env file
 			err := godotenv.Load()
 
@@ -550,14 +572,17 @@ Available commands:
 	cmd.AddCommand(NewStartCmd())
 	cmd.AddCommand(NewExecCmd())
 	cmd.AddCommand(NewDlxCmd())
-	// Defensive: default to real service if test deps didn’t set NewCreateAppSearcher
-	var cas CreateAppSearcher
+	var createAppSearcher CreateAppSearcher
 	if deps.NewCreateAppSearcher != nil {
-		cas = deps.NewCreateAppSearcher()
+		createAppSearcher = deps.NewCreateAppSearcher()
 	} else {
-		cas = services.NewNpmRegistryService()
+		createAppSearcher = services.NewNpmRegistryService()
 	}
-	cmd.AddCommand(NewCreateCmd(cas, deps.NewCreateAppSelector))
+	createAppSelector := deps.NewCreateAppSelector
+	if createAppSelector == nil {
+		createAppSelector = NewCreateAppSelector
+	}
+	cmd.AddCommand(NewCreateCmd(createAppSearcher, createAppSelector))
 	cmd.AddCommand(NewUpdateCmd())
 	cmd.AddCommand(NewUninstallCmd(deps.NewDependencyMultiSelectUI))
 	cmd.AddCommand(NewCleanInstallCmd(deps.DetectVolta))
@@ -566,6 +591,7 @@ Available commands:
 	cmd.AddCommand(NewIntegrateCmd())
 
 	cmd.PersistentFlags().BoolP(_DEBUG_FLAG, "d", false, "Make commands run in debug mode")
+	cmd.Flags().BoolP("version", "v", false, "Show version for command")
 
 	cmd.PersistentFlags().StringP(AGENT_FLAG, "a", "", "Select the JS package manager you want to use")
 
@@ -606,11 +632,11 @@ func init() {
 			NewPackageMultiSelectUI:    newPackageMultiSelectUI,
 			NewTaskSelectorUI:          newTaskSelectorUI,
 			NewDependencyMultiSelectUI: newDependencySelectorUI,
-			NewCreateAppSelector:       NewCreateAppSelector,
 			NewCreateAppSearcher: func() CreateAppSearcher {
 				return services.NewNpmRegistryService()
 			},
-			NewDebugExecutor: newDebugExecutor,
+			NewCreateAppSelector: NewCreateAppSelector,
+			NewDebugExecutor:     newDebugExecutor,
 		},
 	)
 }

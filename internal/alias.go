@@ -49,9 +49,9 @@ func (g *aliasGenerator) GenerateBash(aliases map[string][]string) string {
 	for subcommand, aliasNames := range aliases {
 		for _, aliasName := range aliasNames {
 			// Generate function
-			result.WriteString(fmt.Sprintf("function %s() { command jpd %s \"$@\"; }\n", aliasName, subcommand))
+			fmt.Fprintf(&result, "function %s() { command jpd %s \"$@\"; }\n", aliasName, subcommand)
 			// Generate completion wiring
-			result.WriteString(fmt.Sprintf("complete -F __start_jpd %s\n", aliasName))
+			fmt.Fprintf(&result, "complete -F __start_jpd %s\n", aliasName)
 			result.WriteString("\n")
 		}
 	}
@@ -73,9 +73,9 @@ func (g *aliasGenerator) GenerateZsh(aliases map[string][]string) string {
 	for subcommand, aliasNames := range aliases {
 		for _, aliasName := range aliasNames {
 			// Generate function
-			result.WriteString(fmt.Sprintf("%s() { jpd %s \"$@\"; }\n", aliasName, subcommand))
+			fmt.Fprintf(&result, "%s() { jpd %s \"$@\"; }\n", aliasName, subcommand)
 			// Generate completion wiring
-			result.WriteString(fmt.Sprintf("compdef _jpd %s\n", aliasName))
+			fmt.Fprintf(&result, "compdef _jpd %s\n", aliasName)
 			result.WriteString("\n")
 		}
 	}
@@ -94,11 +94,11 @@ func (g *aliasGenerator) GenerateFish(aliases map[string][]string) string {
 	for subcommand, aliasNames := range aliases {
 		for _, aliasName := range aliasNames {
 			// Generate function
-			result.WriteString(fmt.Sprintf("function %s\n", aliasName))
-			result.WriteString(fmt.Sprintf("    jpd %s $argv\n", subcommand))
+			fmt.Fprintf(&result, "function %s\n", aliasName)
+			fmt.Fprintf(&result, "    jpd %s $argv\n", subcommand)
 			result.WriteString("end\n")
 			// Generate completion wiring
-			result.WriteString(fmt.Sprintf("complete -c %s -w jpd\n", aliasName))
+			fmt.Fprintf(&result, "complete -c %s -w jpd\n", aliasName)
 			result.WriteString("\n")
 		}
 	}
@@ -117,12 +117,12 @@ func (g *aliasGenerator) GenerateNushell(aliases map[string][]string) string {
 	for subcommand, aliasNames := range aliases {
 		for _, aliasName := range aliasNames {
 			// Generate extern declaration
-			result.WriteString(fmt.Sprintf("export extern \"%s\" [\n", aliasName))
+			fmt.Fprintf(&result, "export extern \"%s\" [\n", aliasName)
 			result.WriteString("    ...args: string\n")
 			result.WriteString("]\n")
 			// Generate function definition
-			result.WriteString(fmt.Sprintf("export def %s [...args] {\n", aliasName))
-			result.WriteString(fmt.Sprintf("    jpd %s $args\n", subcommand))
+			fmt.Fprintf(&result, "export def %s [...args] {\n", aliasName)
+			fmt.Fprintf(&result, "    jpd %s $args\n", subcommand)
 			result.WriteString("}\n\n")
 		}
 	}
@@ -146,11 +146,11 @@ func (g *aliasGenerator) GeneratePowerShell(aliases map[string][]string) string 
 	for subcommand, aliasNames := range aliases {
 		for _, aliasName := range aliasNames {
 			// Generate function
-			result.WriteString(fmt.Sprintf("function %s {\n", aliasName))
-			result.WriteString(fmt.Sprintf("    jpd %s @args\n", subcommand))
+			fmt.Fprintf(&result, "function %s {\n", aliasName)
+			fmt.Fprintf(&result, "    jpd %s @args\n", subcommand)
 			result.WriteString("}\n")
 			// Generate completion registration
-			result.WriteString(fmt.Sprintf("Register-ArgumentCompleter -CommandName '%s' -ScriptBlock {\n", aliasName))
+			fmt.Fprintf(&result, "Register-ArgumentCompleter -CommandName '%s' -ScriptBlock {\n", aliasName)
 			result.WriteString("    param($commandName, $parameterName, $wordToComplete, $commandAst, $fakeBoundParameters)\n")
 			result.WriteString("    $completions = @()\n")
 			result.WriteString("    # Add basic jpd argument completion here\n")

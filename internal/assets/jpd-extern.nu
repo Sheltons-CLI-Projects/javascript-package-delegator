@@ -20,6 +20,7 @@
             "exec",
             "install",
             "run",
+            "start",
             "uninstall",
             "update",
             "completion"
@@ -45,8 +46,8 @@
         --agent(-a): string@complete_jpd_agent_types # Select the JS package manager you want to use
         --cwd(-C): path              # Run command in a specific directory (must end with '/')
 
-        # First positional argument is expected to be a subcommand
-        subcommand: string@complete_jpd_subcommands # The subcommand to run (e.g., "install", "run")
+        # First positional argument is optional so `jpd -v` works in Nushell
+        subcommand?: string@complete_jpd_subcommands # The subcommand to run (e.g., "install", "run")
         ...args: string              # Remaining arguments and flags for the subcommand
 
         # Basic help flags
@@ -83,7 +84,9 @@
         --cwd(-C): path              # Run command in a specific directory (must end with '/')
         --help(-h)                   # Show help for command
         --version(-v)                # Show version for command
-        name: string                 # Package name (e.g., react-app) or URL for deno
+        --search(-s): string         # Search npm for create packages interactively
+        --size: int                  # Number of search results to show
+        name?: string                # Package name (e.g., react-app) or URL for deno
         ...args: string              # Project name and additional arguments
     ] # Scaffold new projects (supports package names and URLs for deno)
 
@@ -106,6 +109,17 @@
         --version(-v)                # Show version for command
         ...args: string              # Package to execute and its arguments
     ] # Execute packages using the detected package manager
+
+    export extern "jpd start" [
+        --debug(-d)                  # Make commands run in debug mode
+        --agent(-a): string@complete_jpd_agent_types # Select the JS package manager you want to use
+        --cwd(-C): path              # Run command in a specific directory (must end with '/')
+        --help(-h)                   # Show help for command
+        --version(-v)                # Show version for command
+        --script: string             # Script name to run instead of automatic detection
+        --no-volta                   # Disable Volta integration during auto-install
+        ...args: string              # Additional arguments forwarded to the script
+    ] # Run dev/start scripts with dependency preflight
 
     export extern "jpd install" [
         # Global flags
