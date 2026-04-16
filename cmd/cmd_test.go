@@ -1793,6 +1793,50 @@ var _ = Describe("JPD Commands", func() {
 				// Ensure only a single -- is present in the executed command
 				assert.True(mockCommandRunner.HasCommand("npm", "create", "vite@latest", "--", "my-app", "--template", "react"))
 			})
+
+			DescribeTable(
+				"smoke-maps common framework initializers",
+				func(args []string, expectedCommandArgs []string) {
+					DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(
+						detect.NPM,
+						detect.PACKAGE_LOCK_JSON,
+					)
+					DebugExecutorExpectationManager.ExpectJSCommandLog(
+						"npm",
+						expectedCommandArgs...,
+					)
+
+					commandArgs := append([]string{"create"}, args...)
+					_, err := executeCmd(rootCmd, commandArgs...)
+					assert.NoError(err)
+					assert.True(mockCommandRunner.HasCommand("npm", expectedCommandArgs...))
+				},
+				Entry(
+					"vite react",
+					[]string{"vite@latest", "dummy-vite-react", "--", "--template", "react"},
+					[]string{"create", "vite@latest", "--", "dummy-vite-react", "--template", "react"},
+				),
+				Entry(
+					"vite vue",
+					[]string{"vite@latest", "dummy-vite-vue", "--", "--template", "vue"},
+					[]string{"create", "vite@latest", "--", "dummy-vite-vue", "--template", "vue"},
+				),
+				Entry(
+					"next",
+					[]string{"next-app@latest", "dummy-next", "--yes"},
+					[]string{"create", "next-app@latest", "--", "dummy-next", "--yes"},
+				),
+				Entry(
+					"react-router framework mode",
+					[]string{"react-router@latest", "dummy-react-router", "--yes"},
+					[]string{"create", "react-router@latest", "--", "dummy-react-router", "--yes"},
+				),
+				Entry(
+					"astro",
+					[]string{"astro@latest", "dummy-astro", "--yes", "--template", "minimal"},
+					[]string{"create", "astro@latest", "--", "dummy-astro", "--yes", "--template", "minimal"},
+				),
+			)
 		})
 
 		Context("pnpm", func() {
