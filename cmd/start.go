@@ -220,7 +220,7 @@ func autoInstallDependenciesIfNeeded(
 				missing := MissingNodePackages(baseDir, names)
 				if len(missing) > 0 {
 					shouldInstall = true
-					installReason.WriteString(fmt.Sprintf("%d missing packages; ", len(missing)))
+					fmt.Fprintf(&installReason, "%d missing packages; ", len(missing))
 
 					if goEnv.IsDevelopmentMode() {
 						firstFew := missing
@@ -286,7 +286,7 @@ func autoInstallDependenciesIfNeeded(
 
 			if missingImports > 0 {
 				shouldInstall = true
-				installReason.WriteString(fmt.Sprintf("%d unresolvable imports; ", missingImports))
+				fmt.Fprintf(&installReason, "%d unresolvable imports; ", missingImports)
 
 				if goEnv.IsDevelopmentMode() {
 					de.LogDebugMessageIfDebugIsTrue("Import check", "checked", len(checksToRun), "missing", missingImports)
