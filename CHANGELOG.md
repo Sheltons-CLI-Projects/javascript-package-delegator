@@ -6,11 +6,22 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ## [Unreleased]
-### Breaking
-- **run command**: Removed the `--auto-install` and `--no-volta` flags. `jpd run` now focuses strictly on running scripts; use `jpd start` for dependency bootstrapping.
 
-### Documentation
-- Document the new `start` command workflow and update the run command reference to reflect the removal of `--auto-install`.
+## [4.0.0] - 2026-04-16
+
+### Breaking Changes
+- **start workflow**: `jpd run` no longer owns dependency auto-install behavior. Use `jpd start` for dev/start flows with dependency preflight.
+- **create command**: `jpd create` now delegates to native package-manager `create` commands for npm, pnpm, yarn, and bun, while Deno scaffolding follows the current Deno create workflow.
+
+### Features
+- **start**: Register and ship the dedicated `start` command for dev/start scripts with dependency checks.
+- **create**: Simplify scaffolding so common initializers like Vite, Next, React Router, and Astro delegate directly through the underlying package manager.
+
+### Bug Fixes
+- **create**: Preserve native create delegation across package managers and normalize npm separator handling.
+- **root**: Restore root version handling and command wiring after merging the latest command changes.
+- **deno**: Align scaffolding behavior with `deno create`.
+- **lint/testutil**: Clean up command helpers, alias generation, and deno test fixtures.
 
 ## [3.0.0] - 2025-10-03
 
