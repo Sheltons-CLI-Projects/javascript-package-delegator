@@ -294,8 +294,7 @@ Available commands:
 		run        - Run package.json scripts (equivalent to 'nr')
 		exec       - Execute packages (equivalent to 'nlx')
 		dlx        - Execute packages with package runner (dedicated package-runner command)
-		dev        - Run the dev script with automatic dependency checks
-		create     - Scaffold new projects by delegating to 'npm|pnpm|yarn|bun create' or 'deno init'
+		create     - Scaffold new projects by delegating to 'npm|pnpm|yarn|bun create' or 'deno create'
 		update     - Update packages (equivalent to 'nup')
 		uninstall  - Uninstall packages (equivalent to 'nun')
 		clean-install - Clean install with frozen lockfile (equivalent to 'nci')
@@ -547,7 +546,6 @@ Available commands:
 	cmd.AddCommand(NewInstallCmd(deps.DetectVolta, deps.NewPackageMultiSelectUI))
 	cmd.AddCommand(NewRunCmd(deps.NewTaskSelectorUI))
 	cmd.AddCommand(NewStartCmd())
-	cmd.AddCommand(NewDevCmd())
 	cmd.AddCommand(NewExecCmd())
 	cmd.AddCommand(NewDlxCmd())
 	cmd.AddCommand(NewCreateCmd())

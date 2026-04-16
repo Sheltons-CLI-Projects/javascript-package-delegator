@@ -1709,189 +1709,6 @@ var _ = Describe("JPD Commands", func() {
 
 	})
 
-	const DevCommand = "Dev Command"
-	Describe(DevCommand, func() {
-
-		It("should show help", func() {
-			output, err := executeCmd(rootCmd, "dev", "--help")
-			assert.NoError(err)
-			assert.Contains(output, "Dev runs the dev script after ensuring dependencies are installed")
-			assert.Contains(output, "jpd dev")
-		})
-
-		It("runs npm run dev and forwards extra arguments", func() {
-			rootCmd := factory.CreateNpmAsDefault(nil)
-			testDir := GinkgoT().TempDir()
-			originalDir, err := os.Getwd()
-			assert.NoError(err)
-			err = os.Chdir(testDir)
-			assert.NoError(err)
-			GinkgoT().Cleanup(func() {
-				if originalDir != "" {
-					_ = os.Chdir(originalDir)
-				}
-			})
-
-			err = os.WriteFile(filepath.Join(testDir, "package.json"), []byte(`{"scripts": {"dev": "echo dev"}}`), 0644)
-			assert.NoError(err)
-			err = os.WriteFile(filepath.Join(testDir, "package-lock.json"), []byte(""), 0644)
-			assert.NoError(err)
-			err = os.Mkdir(filepath.Join(testDir, "node_modules"), 0755)
-			assert.NoError(err)
-
-			DebugExecutorExpectationManager.ExpectLockfileDetected(detect.PACKAGE_LOCK_JSON)
-			DebugExecutorExpectationManager.ExpectPMDetectedFromLockfile(detect.NPM)
-			_, err = executeCmd(rootCmd, "dev", "--", "--host", "0.0.0.0")
-			assert.NoError(err)
-			assert.True(mockCommandRunner.HasCommand("npm", "run", "dev", "--", "--host", "0.0.0.0"))
-		})
-
-		It("runs pnpm run dev with auto-install when node_modules missing", func() {
-			rootCmd := factory.CreatePnpmAsDefault(nil)
-			testDir := GinkgoT().TempDir()
-			originalDir, err := os.Getwd()
-			assert.NoError(err)
-			err = os.Chdir(testDir)
-			assert.NoError(err)
-			GinkgoT().Cleanup(func() {
-				if originalDir != "" {
-					_ = os.Chdir(originalDir)
-				}
-			})
-
-			err = os.WriteFile(filepath.Join(testDir, "package.json"), []byte(`{"scripts": {"dev": "echo dev"}}`), 0644)
-			assert.NoError(err)
-			err = os.WriteFile(filepath.Join(testDir, "pnpm-lock.yaml"), []byte(""), 0644)
-			assert.NoError(err)
-
-			DebugExecutorExpectationManager.ExpectLockfileDetected(detect.PNPM_LOCK_YAML)
-			DebugExecutorExpectationManager.ExpectPMDetectedFromLockfile(detect.PNPM)
-			_, err = executeCmd(rootCmd, "dev")
-			assert.NoError(err)
-
-			assert.True(mockCommandRunner.WasCommandCalled("pnpm", "install"))
-			assert.True(mockCommandRunner.HasCommand("pnpm", "run", "dev"))
-		})
-
-		It("passes through args without double dash for yarn v2+", func() {
-			rootCmd := factory.CreateYarnTwoAsDefault(nil)
-			testDir := GinkgoT().TempDir()
-			originalDir, err := os.Getwd()
-			assert.NoError(err)
-			err = os.Chdir(testDir)
-			assert.NoError(err)
-			GinkgoT().Cleanup(func() {
-				if originalDir != "" {
-					_ = os.Chdir(originalDir)
-				}
-			})
-
-			err = os.WriteFile(filepath.Join(testDir, "package.json"), []byte(`{"scripts": {"dev": "yarn dev"}}`), 0644)
-			assert.NoError(err)
-			err = os.WriteFile(filepath.Join(testDir, "yarn.lock"), []byte(""), 0644)
-			assert.NoError(err)
-			err = os.Mkdir(filepath.Join(testDir, "node_modules"), 0755)
-			assert.NoError(err)
-
-			_, err = executeCmd(rootCmd, "dev", "--", "--inspect")
-			assert.NoError(err)
-			assert.True(mockCommandRunner.HasCommand("yarn", "run", "dev", "--inspect"))
-		})
-
-		It("passes through args without double dash for yarn v1", func() {
-			rootCmd := factory.CreateYarnOneAsDefault(nil)
-			testDir := GinkgoT().TempDir()
-			originalDir, err := os.Getwd()
-			assert.NoError(err)
-			err = os.Chdir(testDir)
-			assert.NoError(err)
-			GinkgoT().Cleanup(func() {
-				if originalDir != "" {
-					_ = os.Chdir(originalDir)
-				}
-			})
-
-			err = os.WriteFile(filepath.Join(testDir, "package.json"), []byte(`{"scripts": {"dev": "yarn dev"}}`), 0644)
-			assert.NoError(err)
-			err = os.Mkdir(filepath.Join(testDir, "node_modules"), 0755)
-			assert.NoError(err)
-
-			DebugExecutorExpectationManager.ExpectNoLockfile()
-			DebugExecutorExpectationManager.ExpectPMDetectedFromPath(detect.YARN)
-			_, err = executeCmd(rootCmd, "dev", "--", "--port", "3000")
-			assert.NoError(err)
-			assert.True(mockCommandRunner.HasCommand("yarn", "run", "dev", "--port", "3000"))
-		})
-
-		It("runs deno task dev", func() {
-			testDir := GinkgoT().TempDir()
-			originalDir, err := os.Getwd()
-			assert.NoError(err)
-			err = os.Chdir(testDir)
-			assert.NoError(err)
-			GinkgoT().Cleanup(func() {
-				if originalDir != "" {
-					_ = os.Chdir(originalDir)
-				}
-			})
-
-			rootCmd := factory.CreateDenoAsDefault(nil)
-			err = os.WriteFile(filepath.Join(testDir, "deno.json"), []byte(`{"tasks": {"dev": "deno task dev"}, "imports": {}}`), 0644)
-			assert.NoError(err)
-
-			_, err = executeCmd(rootCmd, "dev", "--", "--port", "4321")
-			assert.NoError(err)
-			assert.True(mockCommandRunner.HasCommand("deno", "task", "dev", "--port", "4321"))
-		})
-
-		It("returns an error when deno dev args contain --eval", func() {
-			testDir := GinkgoT().TempDir()
-			originalDir, err := os.Getwd()
-			assert.NoError(err)
-			err = os.Chdir(testDir)
-			assert.NoError(err)
-			GinkgoT().Cleanup(func() {
-				if originalDir != "" {
-					_ = os.Chdir(originalDir)
-				}
-			})
-
-			rootCmd := factory.CreateDenoAsDefault(nil)
-			err = os.WriteFile(filepath.Join(testDir, "deno.json"), []byte(`{"tasks": {"dev": "deno task dev"}}`), 0644)
-			assert.NoError(err)
-
-			_, err = executeCmd(rootCmd, "dev", "--", "--eval")
-			assert.Error(err)
-			assert.Contains(err.Error(), "don't pass --eval here use the exec command instead")
-		})
-
-		It("executes bun run dev", func() {
-			rootCmd := factory.CreateBunAsDefault(nil)
-			testDir := GinkgoT().TempDir()
-			originalDir, err := os.Getwd()
-			assert.NoError(err)
-			err = os.Chdir(testDir)
-			assert.NoError(err)
-			GinkgoT().Cleanup(func() {
-				if originalDir != "" {
-					_ = os.Chdir(originalDir)
-				}
-			})
-
-			err = os.WriteFile(filepath.Join(testDir, "package.json"), []byte(`{"scripts": {"dev": "bun dev"}}`), 0644)
-			assert.NoError(err)
-			err = os.WriteFile(filepath.Join(testDir, "bun.lockb"), []byte(""), 0644)
-			assert.NoError(err)
-			err = os.Mkdir(filepath.Join(testDir, "node_modules"), 0755)
-			assert.NoError(err)
-
-			_, err = executeCmd(rootCmd, "dev", "--", "--hot")
-			assert.NoError(err)
-			assert.True(mockCommandRunner.HasCommand("bun", "run", "dev", "--hot"))
-		})
-
-	})
-
 	const AgentCommand = "Agent Command"
 	Describe(AgentCommand, func() {
 
@@ -4560,7 +4377,6 @@ var _ = Describe("JPD Commands", func() {
 			assert.Contains(commandNames, "run")
 			assert.Contains(commandNames, "exec")
 			assert.Contains(commandNames, "dlx")
-			assert.Contains(commandNames, "dev")
 			assert.Contains(commandNames, "create")
 			assert.Contains(commandNames, "update")
 			assert.Contains(commandNames, "uninstall")
@@ -4578,7 +4394,7 @@ var _ = Describe("JPD Commands", func() {
 					userCommands++
 				}
 			}
-			assert.Equal(12, userCommands)
+			assert.Equal(11, userCommands)
 		})
 	})
 
