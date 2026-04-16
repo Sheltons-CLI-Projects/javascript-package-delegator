@@ -39,7 +39,7 @@ func NewCreateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create [args...]",
 		Short: "Scaffold a new project using the package manager's create command",
-Long: `Scaffold a new project by delegating to the package manager's native create command.
+		Long: `Scaffold a new project by delegating to the package manager's native create command.
 
 Package Manager Behavior:
 - npm:  Runs 'npm create <args>'   (npm create = npm init, runs create-* packages)
