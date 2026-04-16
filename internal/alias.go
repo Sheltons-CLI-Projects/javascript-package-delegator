@@ -49,9 +49,9 @@ func (g *aliasGenerator) GenerateBash(aliases map[string][]string) string {
 	for subcommand, aliasNames := range aliases {
 		for _, aliasName := range aliasNames {
 			// Generate function
-			result.WriteString(fmt.Sprintf("function %s() { command jpd %s \"$@\"; }\n", aliasName, subcommand))
+			fmt.Fprintf(&result, "function %s() { command jpd %s \"$@\"; }\n", aliasName, subcommand)
 			// Generate completion wiring
-			result.WriteString(fmt.Sprintf("complete -F __start_jpd %s\n", aliasName))
+			fmt.Fprintf(&result, "complete -F __start_jpd %s\n", aliasName)
 			result.WriteString("\n")
 		}
 	}
@@ -73,7 +73,7 @@ func (g *aliasGenerator) GenerateZsh(aliases map[string][]string) string {
 	for subcommand, aliasNames := range aliases {
 		for _, aliasName := range aliasNames {
 			// Generate function
-			result.WriteString(fmt.Sprintf("%s() { jpd %s \"$@\"; }\n", aliasName, subcommand))
+			fmt.Fprintf(&result, "%s() { jpd %s \"$@\"; }\n", aliasName, subcommand)
 			// Generate completion wiring
 			result.WriteString(fmt.Sprintf("compdef _jpd %s\n", aliasName))
 			result.WriteString("\n")

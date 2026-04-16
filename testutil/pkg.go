@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"os"
 
-	. "github.com/onsi/ginkgo/v2"
+	ginkgo "github.com/onsi/ginkgo/v2"
 	"github.com/spf13/cobra"
 	tmock "github.com/stretchr/testify/mock"
 
@@ -435,7 +435,7 @@ func (f *RootCommandFactory) CreateDenoAsDefault(err error) *cobra.Command {
   }
 }`
 	_ = os.WriteFile("deno.json", []byte(denoJSONContent), 0644)
-	DeferCleanup(func() {
+	ginkgo.DeferCleanup(func() {
 		_ = os.Remove("deno.json")
 	})
 
