@@ -39,19 +39,19 @@ func NewCreateCmd() *cobra.Command {
 	return &cobra.Command{
 		Use:   "create [args...]",
 		Short: "Scaffold a new project using the package manager's create command",
-		Long: `Scaffold a new project by delegating to the package manager's native create command.
+Long: `Scaffold a new project by delegating to the package manager's native create command.
 
 Package Manager Behavior:
-- npm:  Runs 'npm create <args>'
+- npm:  Runs 'npm create <args>'   (npm create = npm init, runs create-* packages)
 - pnpm: Runs 'pnpm create <args>'
-- yarn: Runs 'yarn create <args>'
+- yarn: Runs 'yarn create <args>'  (works for both yarn v1 and v2+)
 - bun:  Runs 'bun create <args>'
-- deno: Runs 'deno init <args>'
+- deno: Runs 'deno create <args>'
 
 Examples:
   jpd create vite@latest my-app
   jpd create next-app myapp --typescript
-  jpd -a deno create my-deno-app`,
+  jpd -a deno create npm:vite my-deno-app`,
 		Aliases: []string{"c"},
 		Args:    cobra.MinimumNArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -73,7 +73,7 @@ Examples:
 				cmdArgs = append([]string{"create"}, args...)
 			case "deno":
 				execCommand = "deno"
-				cmdArgs = append([]string{"init"}, args...)
+				cmdArgs = append([]string{"create"}, args...)
 			default:
 				return fmt.Errorf("unsupported package manager: %s", pm)
 			}

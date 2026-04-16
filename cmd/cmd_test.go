@@ -1646,13 +1646,22 @@ var _ = Describe("JPD Commands", func() {
 		})
 
 		Context("yarn", func() {
-			It("delegates to yarn create for both v1 and v2+", func() {
+			It("delegates to yarn create for yarn v1", func() {
 				yarnRootCmd := factory.CreateYarnOneAsDefault(nil)
 				DebugExecutorExpectationManager.ExpectCommonPathDetectionFlow(detect.YARN)
 				DebugExecutorExpectationManager.ExpectJSCommandLog("yarn", "create", "react-app", "my-app")
 				_, err := executeCmd(yarnRootCmd, "create", "react-app", "my-app")
 				assert.NoError(err)
 				assert.True(mockCommandRunner.HasCommand("yarn", "create", "react-app", "my-app"))
+			})
+
+			It("delegates to yarn create for yarn v2+", func() {
+				yarnRootCmd := factory.CreateYarnTwoAsDefault(nil)
+				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.YARN, detect.YARN_LOCK)
+				DebugExecutorExpectationManager.ExpectJSCommandLog("yarn", "create", "vite@latest", "my-app")
+				_, err := executeCmd(yarnRootCmd, "create", "vite@latest", "my-app")
+				assert.NoError(err)
+				assert.True(mockCommandRunner.HasCommand("yarn", "create", "vite@latest", "my-app"))
 			})
 		})
 
@@ -1668,13 +1677,13 @@ var _ = Describe("JPD Commands", func() {
 		})
 
 		Context("deno", func() {
-			It("delegates to deno init with args", func() {
+			It("delegates to deno create with args", func() {
 				denoRootCmd := factory.CreateDenoAsDefault(nil)
 				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.DENO, detect.DENO_JSON)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("deno", "init", "my-deno-app")
-				_, err := executeCmd(denoRootCmd, "create", "my-deno-app")
+				DebugExecutorExpectationManager.ExpectJSCommandLog("deno", "create", "npm:vite", "my-deno-app")
+				_, err := executeCmd(denoRootCmd, "create", "npm:vite", "my-deno-app")
 				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("deno", "init", "my-deno-app"))
+				assert.True(mockCommandRunner.HasCommand("deno", "create", "npm:vite", "my-deno-app"))
 			})
 		})
 
@@ -1764,7 +1773,7 @@ var _ = Describe("JPD Commands", func() {
 			assert.True(mockCommandRunner.HasCommand("pnpm", "run", "dev"))
 		})
 
-		It("passes through args without double dash for yarn", func() {
+		It("passes through args without double dash for yarn v2+", func() {
 			rootCmd := factory.CreateYarnTwoAsDefault(nil)
 			testDir := GinkgoT().TempDir()
 			originalDir, err := os.Getwd()
@@ -1787,6 +1796,31 @@ var _ = Describe("JPD Commands", func() {
 			_, err = executeCmd(rootCmd, "dev", "--", "--inspect")
 			assert.NoError(err)
 			assert.True(mockCommandRunner.HasCommand("yarn", "run", "dev", "--inspect"))
+		})
+
+		It("passes through args without double dash for yarn v1", func() {
+			rootCmd := factory.CreateYarnOneAsDefault(nil)
+			testDir := GinkgoT().TempDir()
+			originalDir, err := os.Getwd()
+			assert.NoError(err)
+			err = os.Chdir(testDir)
+			assert.NoError(err)
+			GinkgoT().Cleanup(func() {
+				if originalDir != "" {
+					_ = os.Chdir(originalDir)
+				}
+			})
+
+			err = os.WriteFile(filepath.Join(testDir, "package.json"), []byte(`{"scripts": {"dev": "yarn dev"}}`), 0644)
+			assert.NoError(err)
+			err = os.Mkdir(filepath.Join(testDir, "node_modules"), 0755)
+			assert.NoError(err)
+
+			DebugExecutorExpectationManager.ExpectNoLockfile()
+			DebugExecutorExpectationManager.ExpectPMDetectedFromPath(detect.YARN)
+			_, err = executeCmd(rootCmd, "dev", "--", "--port", "3000")
+			assert.NoError(err)
+			assert.True(mockCommandRunner.HasCommand("yarn", "run", "dev", "--port", "3000"))
 		})
 
 		It("runs deno task dev", func() {
