@@ -166,8 +166,6 @@ type Dependencies struct {
 	NewPackageMultiSelectUI               func([]services.PackageInfo) MultiUISelecter
 	NewTaskSelectorUI                     func(options []string) TaskUISelector
 	NewDependencyMultiSelectUI            func(options []string) DependencyUIMultiSelector
-	NewCreateAppSelector                  func([]services.PackageInfo) CreateAppSelector
-	NewCreateAppSearcher                  func() CreateAppSearcher
 	NewDebugExecutor                      func(bool) DebugExecutor
 }
 
@@ -296,7 +294,7 @@ Available commands:
 		run        - Run package.json scripts (equivalent to 'nr')
 		exec       - Execute packages (equivalent to 'nlx')
 		dlx        - Execute packages with package runner (dedicated package-runner command)
-		create     - Scaffold new projects (equivalent to 'npm|pnpm|yarn|bun create', 'deno run <url>')
+		create     - Scaffold new projects by delegating to 'npm|pnpm|yarn|bun create' or 'deno create'
 		update     - Update packages (equivalent to 'nup')
 		uninstall  - Uninstall packages (equivalent to 'nun')
 		clean-install - Clean install with frozen lockfile (equivalent to 'nci')
@@ -550,14 +548,7 @@ Available commands:
 	cmd.AddCommand(NewStartCmd())
 	cmd.AddCommand(NewExecCmd())
 	cmd.AddCommand(NewDlxCmd())
-	// Defensive: default to real service if test deps didn’t set NewCreateAppSearcher
-	var cas CreateAppSearcher
-	if deps.NewCreateAppSearcher != nil {
-		cas = deps.NewCreateAppSearcher()
-	} else {
-		cas = services.NewNpmRegistryService()
-	}
-	cmd.AddCommand(NewCreateCmd(cas, deps.NewCreateAppSelector))
+	cmd.AddCommand(NewCreateCmd())
 	cmd.AddCommand(NewUpdateCmd())
 	cmd.AddCommand(NewUninstallCmd(deps.NewDependencyMultiSelectUI))
 	cmd.AddCommand(NewCleanInstallCmd(deps.DetectVolta))
@@ -606,11 +597,7 @@ func init() {
 			NewPackageMultiSelectUI:    newPackageMultiSelectUI,
 			NewTaskSelectorUI:          newTaskSelectorUI,
 			NewDependencyMultiSelectUI: newDependencySelectorUI,
-			NewCreateAppSelector:       NewCreateAppSelector,
-			NewCreateAppSearcher: func() CreateAppSearcher {
-				return services.NewNpmRegistryService()
-			},
-			NewDebugExecutor: newDebugExecutor,
+			NewDebugExecutor:           newDebugExecutor,
 		},
 	)
 }

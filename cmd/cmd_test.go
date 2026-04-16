@@ -1602,14 +1602,8 @@ var _ = Describe("JPD Commands", func() {
 		It("should show help", func() {
 			output, err := executeCmd(rootCmd, "create", "--help")
 			assert.NoError(err)
-			assert.Contains(output, "Scaffold a new project using the appropriate package manager's create command")
+			assert.Contains(output, "Scaffold a new project by delegating to the package manager's native create command")
 			assert.Contains(output, "jpd create")
-			// Create-specific flags are visible in help
-			assert.Contains(output, "--search")
-			assert.Contains(output, "-s")
-			assert.Contains(output, "--size")
-			// Guidance about npm separator normalization
-			assert.Contains(output, "JPD automatically inserts the -- separator")
 		})
 
 		It("should have correct aliases", func() {
@@ -1622,252 +1616,74 @@ var _ = Describe("JPD Commands", func() {
 			assert.Contains(err.Error(), "requires at least 1 arg(s)")
 		})
 
-		// BuildCreateCommand Unit Tests
-		Describe("BuildCreateCommand function tests", func() {
-			Describe("npm create command", func() {
-				It("should build npm exec create-react-app command", func() {
-					program, args, err := cmd.BuildCreateCommand("npm", "", "react-app", []string{"my-app"})
-					assert.NoError(err)
-					assert.Equal("npm", program)
-					assert.Equal([]string{"exec", "create-react-app", "--", "my-app"}, args)
-				})
-
-				It("should handle package already prefixed with create-", func() {
-					program, args, err := cmd.BuildCreateCommand("npm", "", "create-react-app", []string{"my-app"})
-					assert.NoError(err)
-					assert.Equal("npm", program)
-					assert.Equal([]string{"exec", "create-react-app", "--", "my-app"}, args)
-				})
-
-				It("should handle version specifiers", func() {
-					program, args, err := cmd.BuildCreateCommand("npm", "", "vite@latest", []string{"my-app", "--template", "react"})
-					assert.NoError(err)
-					assert.Equal("npm", program)
-					assert.Equal([]string{"exec", "create-vite@latest", "--", "my-app", "--template", "react"}, args)
-				})
-
-				It("should handle scoped packages", func() {
-					program, args, err := cmd.BuildCreateCommand("npm", "", "@org/starter", []string{"my-app"})
-					assert.NoError(err)
-					assert.Equal("npm", program)
-					assert.Equal([]string{"exec", "@org/starter", "--", "my-app"}, args)
-				})
-
-				It("should return error when no name provided", func() {
-					_, _, err := cmd.BuildCreateCommand("npm", "", "", []string{})
-					assert.Error(err)
-					assert.Contains(err.Error(), "package name is required")
-				})
-
-				It("should reject URLs", func() {
-					_, _, err := cmd.BuildCreateCommand("npm", "", "https://example.com/create.js", []string{})
-					assert.Error(err)
-					assert.Contains(err.Error(), "URLs are not supported for npm")
-				})
-			})
-
-			Describe("pnpm create command", func() {
-				It("should build pnpm exec command", func() {
-					program, args, err := cmd.BuildCreateCommand("pnpm", "", "react-app", []string{"my-app"})
-					assert.NoError(err)
-					assert.Equal("pnpm", program)
-					assert.Equal([]string{"dlx", "create-react-app", "my-app"}, args)
-				})
-
-				It("should handle version specifiers", func() {
-					program, args, err := cmd.BuildCreateCommand("pnpm", "", "vite@4", []string{"my-app", "--template", "vue"})
-					assert.NoError(err)
-					assert.Equal("pnpm", program)
-					assert.Equal([]string{"dlx", "create-vite@4", "my-app", "--template", "vue"}, args)
-				})
-			})
-
-			Describe("yarn create command", func() {
-				It("should use npx for yarn v1", func() {
-					program, args, err := cmd.BuildCreateCommand("yarn", "1.22.0", "react-app", []string{"my-app"})
-					assert.NoError(err)
-					assert.Equal("npx", program)
-					assert.Equal([]string{"create-react-app", "my-app"}, args)
-				})
-
-				It("should use yarn dlx for yarn v2+", func() {
-					program, args, err := cmd.BuildCreateCommand("yarn", "2.0.0", "react-app", []string{"my-app"})
-					assert.NoError(err)
-					assert.Equal("yarn", program)
-					assert.Equal([]string{"dlx", "create-react-app", "my-app"}, args)
-				})
-
-				It("should use yarn dlx for yarn berry", func() {
-					program, args, err := cmd.BuildCreateCommand("yarn", "berry-3.1.0", "react-app", []string{"my-app"})
-					assert.NoError(err)
-					assert.Equal("yarn", program)
-					assert.Equal([]string{"dlx", "create-react-app", "my-app"}, args)
-				})
-			})
-
-			Describe("bun create command", func() {
-				It("should use bunx", func() {
-					program, args, err := cmd.BuildCreateCommand("bun", "", "react-app", []string{"my-app"})
-					assert.NoError(err)
-					assert.Equal("bunx", program)
-					assert.Equal([]string{"create-react-app", "my-app"}, args)
-				})
-			})
-
-			Describe("deno create command", func() {
-				It("should use deno run with valid URL", func() {
-					program, args, err := cmd.BuildCreateCommand("deno", "", "https://deno.land/x/fresh/init.ts", []string{"my-app"})
-					assert.NoError(err)
-					assert.Equal("deno", program)
-					assert.Equal([]string{"run", "https://deno.land/x/fresh/init.ts", "my-app"}, args)
-				})
-
-				It("should reject invalid URL", func() {
-					_, _, err := cmd.BuildCreateCommand("deno", "", "not-a-url", []string{})
-					assert.Error(err)
-					assert.Contains(err.Error(), "deno create requires a valid URL")
-				})
-
-				It("should reject empty URL", func() {
-					_, _, err := cmd.BuildCreateCommand("deno", "", "", []string{})
-					assert.Error(err)
-					assert.Contains(err.Error(), "deno create requires a URL")
-				})
-			})
-
-			Describe("error cases", func() {
-				It("should reject unsupported package manager", func() {
-					_, _, err := cmd.BuildCreateCommand("unsupported", "", "react-app", []string{})
-					assert.Error(err)
-					assert.Contains(err.Error(), "unsupported package manager")
-				})
-			})
-		})
-
 		Context("npm", func() {
-			It("should execute npm exec create-react-app", func() {
+			It("delegates to npm create with args", func() {
 				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.NPM, detect.PACKAGE_LOCK_JSON)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("npm", "exec", "create-react-app", "--", "my-app")
+				DebugExecutorExpectationManager.ExpectJSCommandLog("npm", "create", "react-app", "my-app")
 				_, err := executeCmd(rootCmd, "create", "react-app", "my-app")
 				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("npm", "exec", "create-react-app", "--", "my-app"))
+				assert.True(mockCommandRunner.HasCommand("npm", "create", "react-app", "my-app"))
 			})
 
-			It("should execute npm exec create-react-app with additional args", func() {
+			It("delegates to npm create with version specifier", func() {
 				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.NPM, detect.PACKAGE_LOCK_JSON)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("npm", "exec", "create-react-app", "--", "my-app", "--template", "typescript")
-				_, err := executeCmd(rootCmd, "create", "react-app", "my-app", "--template", "typescript")
-				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("npm", "exec", "create-react-app", "--", "my-app", "--template", "typescript"))
-			})
-
-			It("should handle create prefix already present", func() {
-				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.NPM, detect.PACKAGE_LOCK_JSON)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("npm", "exec", "create-react-app", "--", "my-app")
-				_, err := executeCmd(rootCmd, "create", "create-react-app", "my-app")
-				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("npm", "exec", "create-react-app", "--", "my-app"))
-			})
-
-			It("should handle version specifiers", func() {
-				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.NPM, detect.PACKAGE_LOCK_JSON)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("npm", "exec", "create-vite@latest", "--", "my-app")
+				DebugExecutorExpectationManager.ExpectJSCommandLog("npm", "create", "vite@latest", "my-app")
 				_, err := executeCmd(rootCmd, "create", "vite@latest", "my-app")
 				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("npm", "exec", "create-vite@latest", "--", "my-app"))
-			})
-
-			It("normalizes an extra user-provided -- for npm", func() {
-				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.NPM, detect.PACKAGE_LOCK_JSON)
-				// We only assert the executed command; allow any debug JS command log
-				DebugExecutorExpectationManager.ExpectJSCommandRandomLog()
-				_, err := executeCmd(rootCmd, "create", "vite@latest", "my-app", "--", "--template", "react")
-				assert.NoError(err)
-				// Ensure only a single -- is present in the executed command
-				assert.True(mockCommandRunner.HasCommand("npm", "exec", "create-vite@latest", "--", "my-app", "--template", "react"))
+				assert.True(mockCommandRunner.HasCommand("npm", "create", "vite@latest", "my-app"))
 			})
 		})
 
 		Context("pnpm", func() {
-			var pnpmRootCmd *cobra.Command
-
-			BeforeEach(func() {
-				pnpmRootCmd = factory.CreatePnpmAsDefault(nil)
-			})
-
-			It("should execute pnpm exec create-react-app", func() {
+			It("delegates to pnpm create with args", func() {
+				pnpmRootCmd := factory.CreatePnpmAsDefault(nil)
 				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.PNPM, detect.PNPM_LOCK_YAML)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("pnpm", "dlx", "create-react-app", "my-app")
-				_, err := executeCmd(pnpmRootCmd, "create", "react-app", "my-app")
+				DebugExecutorExpectationManager.ExpectJSCommandLog("pnpm", "create", "vite@latest", "my-app")
+				_, err := executeCmd(pnpmRootCmd, "create", "vite@latest", "my-app")
 				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("pnpm", "dlx", "create-react-app", "my-app"))
-			})
-
-			It("does not strip a user-provided -- for pnpm", func() {
-				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.PNPM, detect.PNPM_LOCK_YAML)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("pnpm", "dlx", "create-vite@latest", "my-app", "--", "--template", "react")
-				_, err := executeCmd(pnpmRootCmd, "create", "vite@latest", "my-app", "--", "--template", "react")
-				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("pnpm", "dlx", "create-vite@latest", "my-app", "--", "--template", "react"))
+				assert.True(mockCommandRunner.HasCommand("pnpm", "create", "vite@latest", "my-app"))
 			})
 		})
 
 		Context("yarn", func() {
-			It("should execute npx create-react-app for yarn v1", func() {
+			It("delegates to yarn create for yarn v1", func() {
 				yarnRootCmd := factory.CreateYarnOneAsDefault(nil)
 				DebugExecutorExpectationManager.ExpectCommonPathDetectionFlow(detect.YARN)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("npx", "create-react-app", "my-app")
+				DebugExecutorExpectationManager.ExpectJSCommandLog("yarn", "create", "react-app", "my-app")
 				_, err := executeCmd(yarnRootCmd, "create", "react-app", "my-app")
 				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("npx", "create-react-app", "my-app"))
+				assert.True(mockCommandRunner.HasCommand("yarn", "create", "react-app", "my-app"))
 			})
 
-			It("should execute yarn dlx create-react-app for yarn v2+", func() {
+			It("delegates to yarn create for yarn v2+", func() {
 				yarnRootCmd := factory.CreateYarnTwoAsDefault(nil)
 				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.YARN, detect.YARN_LOCK)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("yarn", "dlx", "create-react-app", "my-app")
-				_, err := executeCmd(yarnRootCmd, "create", "react-app", "my-app")
+				DebugExecutorExpectationManager.ExpectJSCommandLog("yarn", "create", "vite@latest", "my-app")
+				_, err := executeCmd(yarnRootCmd, "create", "vite@latest", "my-app")
 				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("yarn", "dlx", "create-react-app", "my-app"))
+				assert.True(mockCommandRunner.HasCommand("yarn", "create", "vite@latest", "my-app"))
 			})
 		})
 
 		Context("bun", func() {
-			var bunRootCmd *cobra.Command
-
-			BeforeEach(func() {
-				bunRootCmd = factory.CreateBunAsDefault(nil)
-			})
-
-			It("should execute bunx create-react-app", func() {
+			It("delegates to bun create with args", func() {
+				bunRootCmd := factory.CreateBunAsDefault(nil)
 				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.BUN, detect.BUN_LOCKB)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("bunx", "create-react-app", "my-app")
+				DebugExecutorExpectationManager.ExpectJSCommandLog("bun", "create", "react-app", "my-app")
 				_, err := executeCmd(bunRootCmd, "create", "react-app", "my-app")
 				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("bunx", "create-react-app", "my-app"))
+				assert.True(mockCommandRunner.HasCommand("bun", "create", "react-app", "my-app"))
 			})
 		})
 
 		Context("deno", func() {
-			var denoRootCmd *cobra.Command
-
-			BeforeEach(func() {
-				denoRootCmd = factory.CreateDenoAsDefault(nil)
-			})
-
-			It("should execute deno run with URL", func() {
+			It("delegates to deno create with args", func() {
+				denoRootCmd := factory.CreateDenoAsDefault(nil)
 				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.DENO, detect.DENO_JSON)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("deno", "run", "https://deno.land/x/fresh/init.ts", "my-app")
-				_, err := executeCmd(denoRootCmd, "create", "https://deno.land/x/fresh/init.ts", "my-app")
+				DebugExecutorExpectationManager.ExpectJSCommandLog("deno", "create", "npm:vite", "my-deno-app")
+				_, err := executeCmd(denoRootCmd, "create", "npm:vite", "my-deno-app")
 				assert.NoError(err)
-				assert.True(mockCommandRunner.HasCommand("deno", "run", "https://deno.land/x/fresh/init.ts", "my-app"))
-			})
-
-			It("should reject a non-URL for create", func() {
-				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.DENO, detect.DENO_JSON)
-				_, err := executeCmd(denoRootCmd, "create", "not-a-url")
-				assert.Error(err)
-				assert.Contains(err.Error(), "deno create requires a valid URL")
+				assert.True(mockCommandRunner.HasCommand("deno", "create", "npm:vite", "my-deno-app"))
 			})
 		})
 
@@ -1875,7 +1691,6 @@ var _ = Describe("JPD Commands", func() {
 			It("should return error for unsupported package manager", func() {
 				rootCmd := factory.GenerateWithPackageManagerDetector("unknown", nil)
 				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow("unknown", detect.PACKAGE_LOCK_JSON)
-
 				_, err := executeCmd(rootCmd, "create", "react-app", "my-app")
 				assert.Error(err)
 				assert.Contains(err.Error(), "unsupported package manager")
@@ -1885,73 +1700,11 @@ var _ = Describe("JPD Commands", func() {
 				rootCmd := factory.CreateNpmAsDefault(nil)
 				mockCommandRunner.InvalidCommands = []string{"npm"}
 				DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.NPM, detect.PACKAGE_LOCK_JSON)
-				DebugExecutorExpectationManager.ExpectJSCommandLog("npm", "exec", "create-react-app", "--", "my-app")
+				DebugExecutorExpectationManager.ExpectJSCommandLog("npm", "create", "react-app", "my-app")
 				_, err := executeCmd(rootCmd, "create", "react-app", "my-app")
 				assert.Error(err)
 				assert.Contains(err.Error(), "mock error: command 'npm' is configured to fail")
 			})
-		})
-
-		Context("Search flag", func() {
-			It("requires a value", func() {
-				_, err := executeCmd(rootCmd, "create", "--search")
-				assert.Error(err)
-				assert.Contains(err.Error(), "flag needs an argument: --search")
-			})
-
-			It("errors when args are passed with the search flag", func() {
-				_, err := executeCmd(rootCmd, "create", "some-arg", "--search", "query")
-				assert.Error(err)
-				assert.Contains(err.Error(), "when using the --search flag, you cannot pass any other arguments")
-			})
-
-			// TODO: Skipped - requires mock.NewMockHTTPClient which doesn't exist
-			// It("errors when the search returns no results", func() {
-			// 	// Setup expectations for npm and a failed search
-			// 	DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.NPM, detect.PACKAGE_LOCK_JSON)
-			//
-			// 	// Configure the mock HTTP client to return an empty search result
-			// 	mockHTTPClient := mock.NewMockHTTPClient()
-			// 	mockHTTPClient.ResponseBody = `{"objects":[]}`
-			// 	services.SetDefaultClient(mockHTTPClient)
-			//
-			// 	_, err := executeCmd(rootCmd, "create", "--search", "nonexistent-package")
-			// 	assert.Error(err)
-			// 	assert.Contains(err.Error(), "No packages found for query")
-			//
-			// 	// Restore default client
-			// 	services.SetDefaultClient(nil)
-			// })
-			//
-			// It("executes the selected package after a successful search", func() {
-			// 	// Setup expectations
-			// 	DebugExecutorExpectationManager.ExpectCommonPMDetectionFlow(detect.NPM, detect.PACKAGE_LOCK_JSON)
-			// 	DebugExecutorExpectationManager.ExpectJSCommandLog("npm", "exec", "create-vite", "--", "my-app")
-			//
-			// 	// Configure mock HTTP client for successful search
-			// 	mockHTTPClient := mock.NewMockHTTPClient()
-			// 	searchResults := services.PackageSearch{
-			// 		Objects: []services.Object{
-			// 			{Package: services.Package{Name: "create-vite", Version: "1.0.0"}},
-			// 			{Package: services.Package{Name: "create-react-app", Version: "1.0.0"}},
-			// 		},
-			// 	}
-			// 	body, _ := json.Marshal(searchResults)
-			// 	mockHTTPClient.ResponseBody = string(body)
-			// 	services.SetDefaultClient(mockHTTPClient)
-			//
-			// 	// Configure the UI to select "create-vite"
-			// 	rootCmd := factory.CreateWithSelectedPackage("create-vite")
-			//
-			// 	_, err := executeCmd(rootCmd, "create", "--search", "vite", "my-app")
-			// 	assert.NoError(err)
-			//
-			// 	// Verify the correct command was run
-			// 	assert.True(mockCommandRunner.HasCommand("npm", "exec", "create-vite", "--", "my-app"))
-			//
-			// 	// Restore default client
-			// 	services.SetDefaultClient(nil)
-			// })
 		})
 
 	})
